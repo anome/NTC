@@ -214,7 +214,6 @@ void SocketListener::stop()
 
 void SocketListener::disconnect()
 {
-    stop();
     if( socket )
     {
         socket->close();
