@@ -16,7 +16,7 @@
 
 #define NTC_ASK_DURATION 1.
 #define NTC_ASK_COUNT 60
-#define NTC_ASK_FREQ 300.
+#define NTC_ASK_FREQ 10.
 
 #define NTC_ORDER_SYNC 't'
 #define NTC_ORDER_PAUSE 'p'
