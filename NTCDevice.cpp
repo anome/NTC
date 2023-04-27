@@ -533,6 +533,7 @@ void NTCMaster::pause()
     double currentTime = getInternalTime();
     pauseTime = currentTime + longestDelay;
     sendPause();
+    sendSeek();
 }
 
 void NTCMaster::stop()
