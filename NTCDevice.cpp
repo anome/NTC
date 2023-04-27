@@ -232,6 +232,7 @@ void NTCDeviceAbstract::setCurrentTimeAtPoint(double time, double settingTimePoi
 {
     currentTimePoint = settingTimePoint;
     currentTime = time;
+    nowTimePoint = getInternalTime();
 }
 
 bool NTCDeviceAbstract::isPlaying()
