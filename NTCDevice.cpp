@@ -758,7 +758,11 @@ void NTCSlave::decodeData(void *data, size_t size, std::string fromString)
     }
     else if( order == NTC_ORDER_PLAY )
     {
-        playTime = receivedTime;
+        if( !(fabs(receivedTime-(playTime)) < 0.016) )
+        {
+            setCurrentTimeAtPoint(getCurrentTime(), receivedTime);
+            playTime = receivedTime;
+        }
         if( dataCallback )
         {
             dataCallback(&(receivedPacket->ntc));
