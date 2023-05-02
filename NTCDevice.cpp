@@ -217,6 +217,10 @@ double NTCDeviceAbstract::getCurrentTime()
         {
             nowTimePoint = getInternalTime();
         }
+        else if( isPausing() )
+        {
+            nowTimePoint = pauseTime;
+        }
         double durationSinceLastPoint = nowTimePoint-currentTimePoint;
         return currentTime + durationSinceLastPoint;
     }
@@ -452,7 +456,17 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
 
 void NTCMaster::sendSeekForData(SlaveData *data)
 {
-    updatePacket(getInternalTime() - data->delay, NTC_ORDER_SEEK, true, getCurrentTime());
+    double currentTime = getCurrentTime();
+    double timePoint;
+    if( isPausing() )
+    {
+        timePoint = pauseTime;
+    }
+    else
+    {
+        timePoint = getInternalTime() - data->delay;
+    }
+    updatePacket(timePoint, NTC_ORDER_SEEK, true, currentTime);
     sendPacket(data->sender);
 }
 
@@ -508,8 +522,6 @@ void NTCMaster::sendStop()
 
 void NTCMaster::play()
 {
-    setCurrentTime(getCurrentTime());
-    
     double longestDelay = 0;
     for(std::map<std::string,SlaveData*>::iterator it = slaveDataMap.begin(); it != slaveDataMap.end(); ++it)
     {
@@ -518,7 +530,10 @@ void NTCMaster::play()
     longestDelay *= 2.;
     
     double currentTime = getInternalTime();
-    playTime = currentTime + longestDelay;
+    double timeToPlay = currentTime + longestDelay;
+    double value = getCurrentTime();
+    NTCDeviceAbstract::setCurrentTimeAtPoint(value, timeToPlay);
+    playTime = timeToPlay;
     sendPlay();
 }
 
@@ -556,6 +571,10 @@ void NTCMaster::stop()
 
 void NTCMaster::setCurrentTimeAtPoint(double time, double settingTimePoint)
 {
+    if( isPausing() )
+    {
+        settingTimePoint = pauseTime;
+    }
     NTCDeviceAbstract::setCurrentTimeAtPoint(time, settingTimePoint);
     sendSeek();
 }
