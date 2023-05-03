@@ -428,7 +428,7 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
                     ++numberOfValidPoint;
                 }
             }
-            data->delay = delay / numberOfValidPoint;
+            data->delay = numberOfValidPoint > 0 ? delay / numberOfValidPoint : 0;
             if( isPlaying() )
             {
                 sendPlayForData(data);
@@ -464,7 +464,7 @@ void NTCMaster::sendSeekForData(SlaveData *data)
     }
     else
     {
-        timePoint = getInternalTime() - data->delay;
+        timePoint = std::max(0., getInternalTime() - data->delay);
     }
     updatePacket(timePoint, NTC_ORDER_SEEK, true, currentTime);
     sendPacket(data->sender);
@@ -472,19 +472,22 @@ void NTCMaster::sendSeekForData(SlaveData *data)
 
 void NTCMaster::sendPlayForData(SlaveData *data)
 {
-    updatePacket(playTime - data->delay, NTC_ORDER_PLAY);
+    double playTimeToSend = std::max(0., playTime - data->delay);
+    updatePacket(playTimeToSend, NTC_ORDER_PLAY);
     sendPacket(data->sender);
 }
 
 void NTCMaster::sendPauseForData(SlaveData *data)
 {
-    updatePacket(pauseTime - data->delay, NTC_ORDER_PAUSE);
+    double pauseTimeToSend = std::max(0., pauseTime - data->delay);
+    updatePacket(pauseTimeToSend, NTC_ORDER_PAUSE);
     sendPacket(data->sender);
 }
 
 void NTCMaster::sendStopForData(SlaveData *data)
 {
-    updatePacket(stopTime - data->delay, NTC_ORDER_STOP);
+    double stopTimeToSend = std::max(0., stopTime - data->delay);
+    updatePacket(stopTimeToSend, NTC_ORDER_STOP);
     sendPacket(data->sender);
 }
 
