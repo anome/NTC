@@ -86,7 +86,6 @@ const char *ntc_strerror(const ntc_error_t error) {
 
 NTCDeviceAbstract::NTCDeviceAbstract(std::string sourceName, std::string interfaceIP) : sourceName(sourceName), interfaceIP(interfaceIP)
 {
-    ntc_pkt_init(&packet, sourceName);
     internalTimePoint = NTCTimeDurationMilli(NTCTimeResolution::now().time_since_epoch()).count() / 1000.f;;
 }
 
@@ -103,7 +102,7 @@ NTCDeviceAbstract::~NTCDeviceAbstract()
 
 // Utility
 
-void NTCDeviceAbstract::updatePacket(double timecode, uint8_t order, bool updateIndex, double seekTime)
+void NTCDeviceAbstract::updatePacket(ntc_packet_t &packet, double timecode, uint8_t order, bool updateIndex, double seekTime)
 {
     unsigned long timeToSend = floor(timecode*1000);
     packet.ntc.milli = timeToSend % 1000;
@@ -139,7 +138,7 @@ void NTCDeviceAbstract::updatePacket(double timecode, uint8_t order, bool update
     }
 }
 
-bool NTCDeviceAbstract::sendPacket(SocketSender *senderSocket)
+bool NTCDeviceAbstract::sendPacket(ntc_packet_t &packet, SocketSender *senderSocket)
 {
     if( !senderSocket || !senderSocket->getIsConnected() )
     {
@@ -362,6 +361,7 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
     {
         data = new SlaveData();
         data->sender = new SocketSender(NTC_UPDATE_PORT, fromIP, false);
+        ntc_pkt_init(&(data->currentPacket), sourceName);
         slaveDataMap[fromIP] = data;
     }
     else
@@ -378,9 +378,9 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
             for(int i=0; i<NTC_ASK_COUNT; ++i)
             {
                 NTCTimePoint startIterTime = NTCTimeResolution::now();
-                updatePacket(getInternalTime(), NTC_ORDER_SYNC);
-                ntc_packet_t currentPacket = this->packet;
-                sendPacket(selectedSender);
+                updatePacket(data->currentPacket, getInternalTime(), NTC_ORDER_SYNC);
+                ntc_packet_t currentPacket = data->currentPacket;
+                sendPacket(currentPacket, selectedSender);
                 data->delayPoints.push_back({startIterTime, NTCTimePoint()});
                 data->packets.push_back(currentPacket);
                 double elapsedTime = NTCTimeDurationMilli(NTCTimeResolution::now()-startIterTime).count();
@@ -397,6 +397,7 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
     {
         NTCTimePoint receivePoint = NTCTimeResolution::now();
         bool findPacket = false;
+        bool canComputeDelay = false;
         for(int i=data->packets.size()-1; i>=0; --i)
         {
             ntc_packet_t currentPacket = data->packets.at(i);
@@ -405,6 +406,10 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
                 data->delayPoints.at(i).receivePoint = receivePoint;
                 data->delayPoints.at(i).valid = true;
                 findPacket = true;
+                if( i >= NTC_ASK_COUNT -1 )
+                {
+                    canComputeDelay = true;
+                }
                 break;
             }
         }
@@ -414,7 +419,7 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
             std::cout<<"missing index "<<packet->ntc.index<<std::endl;
         }
         
-        if( data->delayPoints.size() >= NTC_ASK_COUNT )
+        if( canComputeDelay )
         {
             double delay = 0;
             int numberOfValidPoint = 0;
@@ -466,29 +471,29 @@ void NTCMaster::sendSeekForData(SlaveData *data)
     {
         timePoint = std::max(0., getInternalTime() - data->delay);
     }
-    updatePacket(timePoint, NTC_ORDER_SEEK, true, currentTime);
-    sendPacket(data->sender);
+    updatePacket(data->currentPacket, timePoint, NTC_ORDER_SEEK, true, currentTime);
+    sendPacket(data->currentPacket, data->sender);
 }
 
 void NTCMaster::sendPlayForData(SlaveData *data)
 {
     double playTimeToSend = std::max(0., playTime - data->delay);
-    updatePacket(playTimeToSend, NTC_ORDER_PLAY);
-    sendPacket(data->sender);
+    updatePacket(data->currentPacket, playTimeToSend, NTC_ORDER_PLAY);
+    sendPacket(data->currentPacket, data->sender);
 }
 
 void NTCMaster::sendPauseForData(SlaveData *data)
 {
     double pauseTimeToSend = std::max(0., pauseTime - data->delay);
-    updatePacket(pauseTimeToSend, NTC_ORDER_PAUSE);
-    sendPacket(data->sender);
+    updatePacket(data->currentPacket, pauseTimeToSend, NTC_ORDER_PAUSE);
+    sendPacket(data->currentPacket, data->sender);
 }
 
 void NTCMaster::sendStopForData(SlaveData *data)
 {
     double stopTimeToSend = std::max(0., stopTime - data->delay);
-    updatePacket(stopTimeToSend, NTC_ORDER_STOP);
-    sendPacket(data->sender);
+    updatePacket(data->currentPacket, stopTimeToSend, NTC_ORDER_STOP);
+    sendPacket(data->currentPacket, data->sender);
 }
 
 void NTCMaster::sendSeek()
@@ -634,13 +639,15 @@ void NTCSlave::start(NTCSlaveDataCallback callback)
         syncDataMutex.unlock();
         double duration = NTC_ASK_FREQ;
         NTCTimePoint lastCheck;
+        ntc_packet_t packet;
+        ntc_pkt_init(&packet, sourceName);
         do {
             if( duration >= NTC_ASK_FREQ )
             {
                 lastCheck = NTCTimeResolution::now();
                 isSynchronizing = true;
-                updatePacket(0, NTC_ORDER_SYNC, false);
-                sendPacket(multicastSender);
+                updatePacket(packet, 0, NTC_ORDER_SYNC, false);
+                sendPacket(packet, multicastSender);
                 startTimePoint = NTCTimeResolution::now();
             }
             cross_platform_sleep(1);
@@ -729,9 +736,9 @@ void NTCSlave::decodeData(void *data, size_t size, std::string fromString)
         
         syncDataMutex.lock();
         syncPoints.push_back({currentPacketTime, receivedTime});
-        this->packet = *receivedPacket;
-        updatePacket(receivedTime, NTC_ORDER_SYNC, false);
-        sendPacket(unicastSender);
+        ntc_packet_t packet = *receivedPacket;
+        updatePacket(packet, receivedTime, NTC_ORDER_SYNC, false);
+        sendPacket(packet, unicastSender);
         if( syncPoints.size() >= NTC_ASK_COUNT )
         {
             int nbOfPoints = syncPoints.size();

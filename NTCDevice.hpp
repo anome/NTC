@@ -86,7 +86,6 @@ protected:
     SocketListener *listener = nullptr;
     std::string interfaceIP = NTC_DEFAULT_MULTICAST_ADDR;
     std::string sourceName;
-    ntc_packet_t packet;
     double internalTimePoint = 0;
     double internalTime = 0;
     double nowTimePoint = 0;
@@ -98,8 +97,8 @@ protected:
     double pauseTime = -1;
     double stopTime = -1;
     
-    virtual void updatePacket(double timecode, uint8_t order, bool updateIndex = true, double seekTime = -1);
-    virtual bool sendPacket(SocketSender *senderSocket);
+    virtual void updatePacket(ntc_packet_t &packet, double timecode, uint8_t order, bool updateIndex = true, double seekTime = -1);
+    virtual bool sendPacket(ntc_packet_t &packet, SocketSender *senderSocket);
     void setInternalTime(double time, double settingTimePoint);
     
 public:
@@ -143,6 +142,7 @@ protected:
         std::mutex syncPointMutex;
         std::vector<DelayPoint> delayPoints;
         std::vector<ntc_packet_t> packets;
+        ntc_packet_t currentPacket;
         bool isSync = false;
         double delay = 0;
         
