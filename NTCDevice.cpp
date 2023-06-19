@@ -86,7 +86,6 @@ const char *ntc_strerror(const ntc_error_t error) {
 
 NTCDeviceAbstract::NTCDeviceAbstract(std::string sourceName, std::string interfaceIP) : sourceName(sourceName), interfaceIP(interfaceIP)
 {
-    internalTimePoint = NTCTimeDurationMilli(NTCTimeResolution::now().time_since_epoch()).count() / 1000.f;;
 }
 
 NTCDeviceAbstract::~NTCDeviceAbstract()
@@ -204,6 +203,12 @@ void NTCDeviceAbstract::setInternalTime(double time, double settingTimePoint)
     internalTimePoint = settingTimePoint;
 }
 
+double NTCDeviceAbstract::timeSinceLastUpdate()
+{
+    NTCTimePoint currentTime = NTCTimeResolution::now();
+    return (NTCTimeDurationMilli(currentTime.time_since_epoch()).count()/1000.) - internalTimePoint;
+}
+
 double NTCDeviceAbstract::getCurrentTime()
 {
     if( isStopping() )
@@ -300,6 +305,7 @@ bool NTCDeviceAbstract::isStopping()
 
 NTCMaster::NTCMaster(std::string sourceName, std::string interfaceIP) : NTCDeviceAbstract(sourceName, interfaceIP)
 {
+    internalTimePoint = NTCTimeDurationMilli(NTCTimeResolution::now().time_since_epoch()).count() / 1000.f;
     syncStepDuration = NTC_ASK_DURATION*1000.f / (double)NTC_ASK_COUNT;
     stop();
     listener = new SocketListener(sizeof(ntc_packet_t), NTC_ASK_PORT, this->interfaceIP);

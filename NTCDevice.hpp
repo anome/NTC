@@ -114,6 +114,7 @@ public:
     double getCurrentTime();
     void setCurrentTime(double time);
     virtual void setCurrentTimeAtPoint(double time, double settingTimePoint);
+    double timeSinceLastUpdate();
     
     bool isPlaying();
     bool isPausing();
