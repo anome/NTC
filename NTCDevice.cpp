@@ -375,6 +375,8 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
     {
         data->isSync = true;
         data->syncThread = std::thread([this, data, fromIP, selectedSender](){
+            data->currentCount = NTC_ASK_COUNT;
+            data->numberOfUpdatesPacket = 0;
             for(int i=0; i<NTC_ASK_COUNT; ++i)
             {
                 NTCTimePoint startIterTime = NTCTimeResolution::now();
@@ -397,7 +399,6 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
     {
         NTCTimePoint receivePoint = NTCTimeResolution::now();
         bool findPacket = false;
-        bool canComputeDelay = false;
         for(int i=data->packets.size()-1; i>=0; --i)
         {
             ntc_packet_t currentPacket = data->packets.at(i);
@@ -405,21 +406,19 @@ void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
             {
                 data->delayPoints.at(i).receivePoint = receivePoint;
                 data->delayPoints.at(i).valid = true;
+                ++data->numberOfUpdatesPacket;
                 findPacket = true;
-                if( i >= NTC_ASK_COUNT -1 )
-                {
-                    canComputeDelay = true;
-                }
                 break;
             }
         }
         
         if( !findPacket )
         {
+            --data->currentCount;
             std::cout<<"missing index "<<packet->ntc.index<<std::endl;
         }
         
-        if( canComputeDelay )
+        if( data->numberOfUpdatesPacket >= data->currentCount )
         {
             double delay = 0;
             int numberOfValidPoint = 0;

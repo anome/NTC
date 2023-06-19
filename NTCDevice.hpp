@@ -145,6 +145,8 @@ protected:
         ntc_packet_t currentPacket;
         bool isSync = false;
         double delay = 0;
+        int currentCount = 0;
+        int numberOfUpdatesPacket = 0;
         
         ~SlaveData()
         {
