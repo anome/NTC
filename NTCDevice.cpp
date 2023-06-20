@@ -724,8 +724,6 @@ void NTCSlave::decodeData(void *data, size_t size, std::string fromString)
     double receivedTime = timeInSecForPacket(*receivedPacket);
     
     // check packet order
-    uint64_t currentIndex = receivedPacket->ntc.index;
-    
     uint8_t order = receivedPacket->ntc.order;
     if( order == NTC_ORDER_SYNC )
     {
