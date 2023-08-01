@@ -139,7 +139,7 @@ void NTCDeviceAbstract::updatePacket(ntc_packet_t &packet, double timecode, uint
 
 bool NTCDeviceAbstract::sendPacket(ntc_packet_t &packet, SocketSender *senderSocket)
 {
-    if( !senderSocket || !senderSocket->getIsConnected() )
+    if( !senderSocket || !senderSocket->getIsConnected() || !listener )
     {
         return false;
     }
