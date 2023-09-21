@@ -81,6 +81,7 @@ const char *ntc_strerror(const ntc_error_t error) {
 
 
 
+
 #pragma mark - NTCDeviceAbstract
 // Constructor
 
@@ -600,7 +601,6 @@ void NTCMaster::setCurrentTimeAtPoint(double time, double settingTimePoint)
 
 NTCSlave::NTCSlave(std::string sourceName, std::string interface, std::string masterIp) : NTCDeviceAbstract(sourceName, interface)
 {
-    sources.insert("Any Sources");
     listener = new SocketListener(sizeof(ntc_packet_t), NTC_UPDATE_PORT, this->interfaceIP);
     if( masterIp.size() )
     {
@@ -710,7 +710,7 @@ void NTCSlave::decodeData(void *data, size_t size, std::string fromString)
     
     // check source name
     std::string sourceName = getSourceName();
-    if( sourceName.size() && sourceName.compare("Any Sources") != 0 )
+    if( sourceName.size() )
     {
         if( memcmp(receivedPacket->source_name, sourceName.c_str(), sourceName.size()) != 0 )
         {
