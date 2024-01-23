@@ -10,8 +10,16 @@ AbstractSocketObject::AbstractSocketObject(uint16_t port, std::string interfaceI
 {
     this->interfaceIP = interfaceIP;
     this->port = port;
-    boost::asio::ip::address address = boost::asio::ip::address::from_string(interfaceIP);
-    endpoint = boost::asio::ip::udp::endpoint(address, port);
+    if( !interfaceIP.empty() )
+    {
+        boost::asio::ip::address address;
+        try {
+            address = boost::asio::ip::address::from_string(interfaceIP);
+        } catch ( boost::system::system_error &error ) {
+            std::cout << "AbstractSocketObject init failed: " << error.what() << std::endl;
+        }
+        endpoint = boost::asio::ip::udp::endpoint(address, port);
+    }
 }
 
 AbstractSocketObject::~AbstractSocketObject()
@@ -116,6 +124,11 @@ SocketListener::SocketListener(size_t packetSize, uint16_t port, std::string int
     data = new uint8_t[this->packetSize];
 }
 
+SocketListener::SocketListener(size_t packetSize, uint16_t port) : SocketListener(packetSize, port, "")
+{
+    isMulticast = false;
+}
+
 SocketListener::~SocketListener()
 {
     stop();
@@ -139,8 +152,10 @@ void SocketListener::connect()
     socket->bind(listen_endpoint);
     
     // Join the multicast group.
-    socket->set_option(boost::asio::ip::multicast::join_group(endpoint.address()));
-    
+    if( isMulticast )
+    {
+        socket->set_option(boost::asio::ip::multicast::join_group(endpoint.address()));
+    }
     socket->async_receive_from(boost::asio::buffer(data, packetSize), sender_endpoint,
                                boost::bind(&SocketListener::handle_receive_from, this,
                                            boost::asio::placeholders::error,

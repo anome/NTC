@@ -84,6 +84,7 @@ protected:
     uint8_t *data;
     size_t packetSize;
     boost::asio::ip::udp::endpoint sender_endpoint;
+    bool isMulticast = true;
     
     virtual void connect() override;
     virtual void disconnect() override;
@@ -92,6 +93,7 @@ protected:
     
 public:
     SocketListener(size_t packetSize, uint16_t port, std::string interfaceIP);
+    SocketListener(size_t packetSize, uint16_t port);
     ~SocketListener();
     
     void start(SocketListenerCallback callback = NULL);
