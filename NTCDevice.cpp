@@ -212,24 +212,16 @@ double NTCDeviceAbstract::timeSinceLastUpdate()
 
 double NTCDeviceAbstract::getCurrentTime()
 {
-    if( isStopping() )
+    if( isPlaying() )
     {
-        return 0;
+        nowTimePoint = getInternalTime();
     }
-    else
+    else if( isPausing() )
     {
-        if( isPlaying() )
-        {
-            nowTimePoint = getInternalTime();
-        }
-        else if( isPausing() )
-        {
-            nowTimePoint = pauseTime;
-        }
-        double durationSinceLastPoint = nowTimePoint-currentTimePoint;
-        return currentTime + durationSinceLastPoint;
+        nowTimePoint = pauseTime;
     }
-    return 0;
+    double durationSinceLastPoint = nowTimePoint-currentTimePoint;
+    return currentTime + durationSinceLastPoint;
 }
 
 void NTCDeviceAbstract::setCurrentTime(double time)
@@ -549,6 +541,7 @@ void NTCMaster::play()
     NTCDeviceAbstract::setCurrentTimeAtPoint(value, timeToPlay);
     playTime = timeToPlay;
     sendPlay();
+    sendSeek();
 }
 
 void NTCMaster::pause()
@@ -578,6 +571,7 @@ void NTCMaster::stop()
         longestDelay *= 2.;
         
         double currentTime = getInternalTime();
+        setCurrentTimeAtPoint(0, currentTime);
         stopTime = currentTime + longestDelay;
     }
     sendStop();
