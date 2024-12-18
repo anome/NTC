@@ -169,7 +169,7 @@ void SocketListener::handle_receive_from(const boost::system::error_code& error,
         // handle packet
         if( callback )
         {
-            callback(data, packetSize, sender_endpoint.address().to_string());
+            callback(data, bytes_recvd, sender_endpoint.address().to_string());
         }
         socket->async_receive_from(boost::asio::buffer(data, packetSize), sender_endpoint,
                                    boost::bind(&SocketListener::handle_receive_from, this,
