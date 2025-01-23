@@ -684,6 +684,15 @@ bool NTCSlave::getIsConnected()
 
 void NTCSlave::decodeData(void *data, size_t size, std::string fromString)
 {
+    std::string wantedIP = getMasterIP();
+    if( wantedIP.size() > 0 )
+    {
+        if( wantedIP.compare(fromString) != 0 )
+        {
+            return;
+        }
+    }
+    
     ntc_error_t error;
     if( size != sizeof(ntc_packet_t) )
     {
@@ -821,7 +830,7 @@ std::string NTCSlave::getMasterIP()
         return unicastSender->getInterface();
     }
     
-    return nullptr;
+    return "";
 }
 
 void NTCSlave::setMasterIP(std::string masterIP)
