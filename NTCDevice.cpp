@@ -356,16 +356,22 @@ NTCMaster::~NTCMaster()
 void NTCMaster::askForTimecode(ntc_packet_t *packet, std::string fromIP)
 {
     SlaveData *data = nullptr;
-    if( slaveDataMap.find(fromIP) == slaveDataMap.end() )
+    if( slaveDataMap.find(fromIP) != slaveDataMap.end() )
     {
+        data = slaveDataMap[fromIP];
+    }
+    
+    if( !data || packet->ntc.index == 0 ) // reset data if slave want to reconnect
+    {
+        if( data )
+        {
+            slaveDataMap.erase(fromIP);
+            delete data;
+        }
         data = new SlaveData();
         data->sender = new SocketSender(NTC_UPDATE_PORT, fromIP, false);
         ntc_pkt_init(&(data->currentPacket), sourceName);
         slaveDataMap[fromIP] = data;
-    }
-    else
-    {
-        data = slaveDataMap[fromIP];
     }
     
     data->syncPointMutex.lock();
